@@ -522,17 +522,17 @@ func backupFile(ctx context.Context, mysqld MysqlDaemon, logger logutil.Logger, 
 	return nil
 }
 
-// checkNoDB makes sure there is no user data already there.
+// CheckNoDB makes sure there is no user data already there.
 // Used by Restore, as we do not want to destroy an existing DB.
 // The user's database name must be given since we ignore all others.
 // Returns true if the specified DB either doesn't exist, or has no tables.
 // Returns (false, nil) if the check succeeds but the condition is not
 // satisfied (there is a DB with tables).
 // Returns non-nil error if one occurs while trying to perform the check.
-func checkNoDB(ctx context.Context, mysqld MysqlDaemon, dbName string) (bool, error) {
+func CheckNoDB(ctx context.Context, mysqld MysqlDaemon, dbName string) (bool, error) {
 	qr, err := mysqld.FetchSuperQuery(ctx, "SHOW DATABASES")
 	if err != nil {
-		return false, fmt.Errorf("checkNoDB failed: %v", err)
+		return false, fmt.Errorf("CheckNoDB failed: %v", err)
 	}
 
 	backtickDBName := sqlescape.EscapeID(dbName)
@@ -540,14 +540,14 @@ func checkNoDB(ctx context.Context, mysqld MysqlDaemon, dbName string) (bool, er
 		if row[0].ToString() == dbName {
 			tableQr, err := mysqld.FetchSuperQuery(ctx, "SHOW TABLES FROM "+backtickDBName)
 			if err != nil {
-				return false, fmt.Errorf("checkNoDB failed: %v", err)
+				return false, fmt.Errorf("CheckNoDB failed: %v", err)
 			}
 			if len(tableQr.Rows) == 0 {
 				// no tables == empty db, all is well
 				continue
 			}
 			// found active db
-			log.Warningf("checkNoDB failed, found active db %v", dbName)
+			log.Warningf("CheckNoDB failed, found active db %v", dbName)
 			return false, nil
 		}
 	}
@@ -795,7 +795,7 @@ func Restore(
 
 	if !deleteBeforeRestore {
 		logger.Infof("Restore: checking no existing data is present")
-		ok, err := checkNoDB(ctx, mysqld, dbName)
+		ok, err := CheckNoDB(ctx, mysqld, dbName)
 		if err != nil {
 			return mysql.Position{}, err
 		}

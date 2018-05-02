@@ -52,6 +52,13 @@ func (agent *ActionAgent) RestoreData(ctx context.Context, logger logutil.Logger
 }
 
 func (agent *ActionAgent) restoreDataLocked(ctx context.Context, logger logutil.Logger, deleteBeforeRestore bool) error {
+	ok, err := mysqlctl.CheckNoDB(ctx, agent.MysqlDaemon, topoproto.TabletDbName(agent.Tablet()))
+	// if there is active db, assuming vttablet was just restarted, we simply omit the following steps
+	if err == nil && !ok {
+		agent.refreshTablet(context.Background(), "after vttablet restart")
+		return nil
+	}
+
 	// change type to RESTORE (using UpdateTabletFields so it's
 	// always authorized)
 	var originalType topodatapb.TabletType
